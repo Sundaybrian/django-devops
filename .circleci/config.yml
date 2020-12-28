@@ -25,6 +25,7 @@ jobs:
                       - "/usr/local/bin"
                       - "/usr/local/lib/python3.6/site-packages"
     deploy:
+        executor: python-executor
         steps:
             - checkout
             - run:
