@@ -1,21 +1,45 @@
 version: 2.1
-
-orbs:
-  python: circleci/python@0.2.1
+executors:
+  docker-executor:
+    docker:
+      - image: docker:18.06.3-ce-git
+  python-executor:
+    docker:
+      - image: circleci/python:3.6.4
 
 jobs:
-  build-and-test:
-    executor: python/default
+  dependencies:
+    executor: python-executor
     steps:
-      - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
+      - checkout  # checkout source code to working directory
       - run:
-          command: ./manage.py test
-          name: Test
+          name: Install Python deps in a venv
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          paths:
+            - ".venv"
+            - "/usr/local/bin"
+            - "/usr/local/lib/python3.6/site-packages"
+      deploy:
+        steps:
+          - checkout
+          - run:
+              name: Deploy Master to Heroku
+              command: |
+                git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git master
 
 workflows:
-  main:
+  version: 2
+  build-deploy:
     jobs:
-      - build-and-test
+      - dependencies
+      - deploy:
+          requires:
+            - dependencies
+          filters:
+            branches:
+              only: master
